@@ -1,21 +1,21 @@
-import { DynamicModule, Module } from "@nestjs/common";
-import { DiscoveryModule } from "@nestjs/core";
+import { DynamicModule, Module } from '@nestjs/common';
+import { DiscoveryModule } from '@nestjs/core';
 
-import { RabbitMQLoader } from "./rabbitmq.loader";
-import { RabbitMQService } from "./rabbitmq.service";
-import { ConfigOptions } from "./rabbitmq.types";
-import { CONFIG_OPTIONS } from "./constant";
+import { CONFIG_OPTIONS } from './rabbitmq.constants';
+import { RabbitMQLoader } from './rabbitmq.loader';
+import { RabbitMQService } from './rabbitmq.service';
+import { ConfigOptions } from './rabbitmq.types';
 
 @Module({})
 export class RabbitMQModule {
-  static forRoot(configOptions: ConfigOptions): DynamicModule {
+  static forRoot(config: ConfigOptions): DynamicModule {
     return {
       module: RabbitMQModule,
       imports: [DiscoveryModule],
       providers: [
         {
           provide: CONFIG_OPTIONS,
-          useValue: configOptions,
+          useValue: config,
         },
         RabbitMQLoader,
         RabbitMQService,

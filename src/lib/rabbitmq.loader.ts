@@ -1,15 +1,10 @@
-import {
-  Injectable,
-  Inject,
-  OnModuleInit,
-  OnModuleDestroy,
-} from "@nestjs/common";
-import { DiscoveryService, MetadataScanner, Reflector } from "@nestjs/core";
-import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";
-import { Channel, Connection, Message, connect } from "amqplib";
+import { Injectable, Inject, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
+import { InstanceWrapper } from '@nestjs/core/injector/instance-wrapper';
+import { Channel, Connection, Message, connect } from 'amqplib';
 
-import { CONFIG_OPTIONS, LISTENER_QUEUE } from "./constant";
-import { ConfigOptions } from "./rabbitmq.types";
+import { CONFIG_OPTIONS, LISTENER_QUEUE } from './rabbitmq.constants';
+import { ConfigOptions } from './rabbitmq.types';
 
 @Injectable()
 export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
@@ -17,10 +12,10 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   private channel: Channel;
 
   constructor(
-    @Inject(CONFIG_OPTIONS) private configOptions: ConfigOptions,
+    @Inject(CONFIG_OPTIONS) private config: ConfigOptions,
     private discoveryService: DiscoveryService,
     private metadataScanner: MetadataScanner,
-    private reflector: Reflector
+    private reflector: Reflector,
   ) {}
 
   async onModuleInit() {
@@ -46,9 +41,18 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
     Promise.all([this.channel.close(), this.connection.close()]);
   }
 
+  public async getChannel(): Promise<Channel> {
+    if (this.channel === undefined) {
+      const connection = await this.getConnection();
+      this.channel = await connection.createChannel();
+      return this.channel;
+    }
+    return this.channel;
+  }
+
   private createQueues(channel: Channel) {
     const queues = [];
-    for (const queue of this.configOptions.queues) {
+    for (const queue of this.config.queues) {
       queues.concat([
         channel.assertExchange(queue.exchange, queue.exchangeType),
         channel.assertQueue(queue.name, {
@@ -62,16 +66,8 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
         }),
         channel.assertQueue(`${queue.name}.dlq`),
         channel.bindQueue(queue.name, queue.exchange, queue.routingKey),
-        channel.bindQueue(
-          `${queue.name}.retry`,
-          queue.exchange,
-          `${queue.name}.retry`
-        ),
-        channel.bindQueue(
-          `${queue.name}.dlq`,
-          queue.exchange,
-          `${queue.name}.dlq`
-        ),
+        channel.bindQueue(`${queue.name}.retry`, queue.exchange, `${queue.name}.retry`),
+        channel.bindQueue(`${queue.name}.dlq`, queue.exchange, `${queue.name}.dlq`),
       ]);
     }
     return queues;
@@ -79,28 +75,16 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
 
   private async getConnection(): Promise<Connection> {
     if (this.connection === undefined) {
-      const user = this.configOptions.username;
-      const password = this.configOptions.password;
-      const host = this.configOptions.host;
+      const user = this.config.username;
+      const password = this.config.password;
+      const host = this.config.host;
       this.connection = await connect(`amqp://${user}:${password}@${host}`);
       return this.connection;
     }
     return this.connection;
   }
 
-  public async getChannel(): Promise<Channel> {
-    if (this.channel === undefined) {
-      const connection = await this.getConnection();
-      this.channel = await connection.createChannel();
-      return this.channel;
-    }
-    return this.channel;
-  }
-
-  private async consume(
-    queue: string,
-    callback: (message: Message) => void
-  ): Promise<void> {
+  private async consume(queue: string, callback: (message: Message) => void): Promise<void> {
     const channel = await this.getChannel();
     channel.consume(queue, (message) => {
       try {
@@ -108,15 +92,11 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
         channel.ack(message);
       } catch (error) {
         if (
-          message.properties.headers["x-death"] !== undefined &&
-          message.properties.headers["x-death"][0].count + 1 >=
-            this.configOptions.retry
+          message.properties.headers['x-death'] !== undefined &&
+          message.properties.headers['x-death'][0].count + 1 >= this.config.retry
         ) {
-          channel.sendToQueue(
-            `${queue}.dlq`,
-            Buffer.from(JSON.stringify(message))
-          );
-          channel.ack(message);
+          channel.sendToQueue(`${queue}.dlq`, Buffer.from(JSON.stringify(message)));
+          channel.reject(message);
         } else {
           channel.nack(message, false, false);
         }

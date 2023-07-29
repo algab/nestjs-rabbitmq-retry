@@ -1,13 +1,10 @@
-import { extendArrayMetadata } from "@nestjs/common/utils/extend-metadata.util";
+import { extendArrayMetadata } from '@nestjs/common/utils/extend-metadata.util';
 
-import { LISTENER_QUEUE } from "./constant";
+import { LISTENER_QUEUE } from './rabbitmq.constants';
 
 export const Listener = (queue: string) => {
-  return function (
-    target: any,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     extendArrayMetadata(LISTENER_QUEUE, [{ queue }], descriptor.value);
   };
 };

@@ -9,7 +9,7 @@ export type ConfigOptions = {
 export type ConfigQueue = {
   name: string;
   exchange: string;
-  exchangeType: string;
+  exchangeType: 'TOPIC' | 'DIRECT' | 'FANOUT';
   routingKey: string;
   ttl: number;
 };
