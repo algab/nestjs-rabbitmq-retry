@@ -4,7 +4,7 @@ import { InstanceWrapper } from '@nestjs/core/injector/instance-wrapper';
 import { Channel, Connection, Message, connect } from 'amqplib';
 
 import { CONFIG_OPTIONS, LISTENER_QUEUE } from './rabbitmq.constants';
-import { ConfigOptions } from './rabbitmq.types';
+import { AMQP_Parallel, ConfigOptions } from './rabbitmq.types';
 
 @Injectable()
 export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
@@ -21,20 +21,7 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const channel = await this.getChannel();
     await Promise.all(this.createQueues(channel));
-    this.discoveryService
-      .getProviders()
-      .filter((wrapper) => wrapper.instance && !wrapper.isAlias)
-      .forEach((wrapper: InstanceWrapper) => {
-        const { instance } = wrapper;
-        const prototype = Object.getPrototypeOf(instance) || {};
-        const methodNames = this.metadataScanner.getAllMethodNames(prototype);
-        methodNames.forEach((name: string) => {
-          const value = this.reflector.get(LISTENER_QUEUE, instance[name]);
-          if (value !== undefined) {
-            this.consume(value[0].queue, instance[name]);
-          }
-        });
-      });
+    this.registerListeners();
   }
 
   onModuleDestroy() {
@@ -45,13 +32,14 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
     if (this.channel === undefined) {
       const connection = await this.getConnection();
       this.channel = await connection.createChannel();
+      await this.channel.prefetch(this.config.prefetch);
       return this.channel;
     }
     return this.channel;
   }
 
-  private createQueues(channel: Channel) {
-    const queues = [];
+  private createQueues(channel: Channel): AMQP_Parallel[] {
+    const queues: AMQP_Parallel[] = [];
     for (const queue of this.config.queues) {
       queues.concat([
         channel.assertExchange(queue.exchange, queue.exchangeType),
@@ -71,6 +59,23 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
       ]);
     }
     return queues;
+  }
+
+  private registerListeners(): void {
+    this.discoveryService
+      .getProviders()
+      .filter((wrapper) => wrapper.instance && !wrapper.isAlias)
+      .forEach((wrapper: InstanceWrapper) => {
+        const { instance } = wrapper;
+        const prototype = Object.getPrototypeOf(instance) || {};
+        const methodNames = this.metadataScanner.getAllMethodNames(prototype);
+        methodNames.forEach((name: string) => {
+          const value = this.reflector.get(LISTENER_QUEUE, instance[name]);
+          if (value !== undefined) {
+            this.consume(value[0].queue, instance[name]);
+          }
+        });
+      });
   }
 
   private async getConnection(): Promise<Connection> {
