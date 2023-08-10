@@ -4,15 +4,15 @@ export type ConfigOptions = {
   host: string;
   username: string;
   password: string;
-  retry: number;
-  prefetch: number;
-  queues: ConfigQueue[];
+  retry?: number;
+  prefetch?: number;
+  queues?: ConfigQueue[];
 };
 
 export type ConfigQueue = {
   name: string;
   exchange: string;
-  exchangeType: 'TOPIC' | 'DIRECT' | 'FANOUT';
+  exchangeType: 'topic' | 'direct' | 'fanout' | 'headers';
   routingKey: string;
   ttl: number;
 };

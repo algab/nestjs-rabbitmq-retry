@@ -8,7 +8,9 @@ import { ConfigOptions } from './rabbitmq.types';
 
 @Module({})
 export class RabbitMQModule {
-  static forRoot(config: ConfigOptions): DynamicModule {
+  static forRoot(
+    config: ConfigOptions = { host: '', username: '', password: '', retry: 3, prefetch: 50, queues: [] },
+  ): DynamicModule {
     return {
       module: RabbitMQModule,
       imports: [DiscoveryModule],

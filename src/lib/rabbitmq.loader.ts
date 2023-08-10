@@ -1,7 +1,7 @@
-import { Injectable, Inject, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Inject, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import { InstanceWrapper } from '@nestjs/core/injector/instance-wrapper';
-import { Channel, Connection, Message, connect } from 'amqplib';
+import { Channel, Connection, MessageProperties, connect } from 'amqplib';
 
 import { CONFIG_OPTIONS, LISTENER_QUEUE } from './rabbitmq.constants';
 import { AMQP_Parallel, ConfigOptions } from './rabbitmq.types';
@@ -10,6 +10,7 @@ import { AMQP_Parallel, ConfigOptions } from './rabbitmq.types';
 export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   private connection: Connection;
   private channel: Channel;
+  private readonly logger = new Logger(RabbitMQLoader.name);
 
   constructor(
     @Inject(CONFIG_OPTIONS) private config: ConfigOptions,
@@ -33,6 +34,7 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
       const connection = await this.getConnection();
       this.channel = await connection.createChannel();
       await this.channel.prefetch(this.config.prefetch);
+      this.logger.log('Channel created successfully');
       return this.channel;
     }
     return this.channel;
@@ -58,6 +60,7 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
         channel.bindQueue(`${queue.name}.dlq`, queue.exchange, `${queue.name}.dlq`),
       ]);
     }
+    this.logger.log('Queues created successfully');
     return queues;
   }
 
@@ -72,28 +75,34 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
         methodNames.forEach((name: string) => {
           const value = this.reflector.get(LISTENER_QUEUE, instance[name]);
           if (value !== undefined) {
-            this.consume(value[0].queue, instance[name]);
+            this.consume(value.queue, instance[name]);
           }
         });
       });
   }
 
   private async getConnection(): Promise<Connection> {
-    if (this.connection === undefined) {
-      const user = this.config.username;
-      const password = this.config.password;
-      const host = this.config.host;
-      this.connection = await connect(`amqp://${user}:${password}@${host}`);
+    try {
+      if (this.connection === undefined) {
+        const user = this.config.username;
+        const password = this.config.password;
+        const host = this.config.host;
+        this.connection = await connect(`amqp://${user}:${password}@${host}`);
+        this.logger.log('Connection with RabbitMQ successfully established');
+        return this.connection;
+      }
       return this.connection;
+    } catch (error) {
+      this.logger.error('Connection with RabbitMQ cannot be established successfully');
+      throw error;
     }
-    return this.connection;
   }
 
-  private async consume(queue: string, callback: (message: Message) => void): Promise<void> {
+  private async consume(queue: string, callback: (properties: MessageProperties, body: string) => void): Promise<void> {
     const channel = await this.getChannel();
     channel.consume(queue, (message) => {
       try {
-        callback(message);
+        callback(message.properties, message.content.toString('utf8'));
         channel.ack(message);
       } catch (error) {
         if (
