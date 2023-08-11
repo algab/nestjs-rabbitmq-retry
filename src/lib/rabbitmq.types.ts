@@ -17,4 +17,4 @@ export type ConfigQueue = {
   ttl: number;
 };
 
-export type AMQP_Parallel = Replies.AssertExchange | Replies.AssertQueue | Replies.Empty;
+export type Replies = Replies.AssertExchange | Replies.AssertQueue | Replies.Empty;

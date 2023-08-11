@@ -4,13 +4,14 @@ import { InstanceWrapper } from '@nestjs/core/injector/instance-wrapper';
 import { Channel, Connection, MessageProperties, connect } from 'amqplib';
 
 import { CONFIG_OPTIONS, LISTENER_QUEUE } from './rabbitmq.constants';
-import { AMQP_Parallel, ConfigOptions } from './rabbitmq.types';
+import { ConfigOptions, Replies } from './rabbitmq.types';
 
 @Injectable()
 export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(RabbitMQLoader.name);
+
   private connection: Connection;
   private channel: Channel;
-  private readonly logger = new Logger(RabbitMQLoader.name);
 
   constructor(
     @Inject(CONFIG_OPTIONS) private config: ConfigOptions,
@@ -29,6 +30,23 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
     Promise.all([this.channel.close(), this.connection.close()]);
   }
 
+  public async getConnection(): Promise<Connection> {
+    try {
+      if (this.connection === undefined) {
+        const user = this.config.username;
+        const password = this.config.password;
+        const host = this.config.host;
+        this.connection = await connect(`amqp://${user}:${password}@${host}`);
+        this.logger.log('Connection with RabbitMQ successfully established');
+        return this.connection;
+      }
+      return this.connection;
+    } catch (error) {
+      this.logger.error('Connection with RabbitMQ cannot be established successfully');
+      throw error;
+    }
+  }
+
   public async getChannel(): Promise<Channel> {
     if (this.channel === undefined) {
       const connection = await this.getConnection();
@@ -40,8 +58,8 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
     return this.channel;
   }
 
-  private createQueues(channel: Channel): AMQP_Parallel[] {
-    const queues: AMQP_Parallel[] = [];
+  private createQueues(channel: Channel): Replies[] {
+    const queues: Replies[] = [];
     for (const queue of this.config.queues) {
       queues.concat([
         channel.assertExchange(queue.exchange, queue.exchangeType),
@@ -71,31 +89,14 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
       .forEach((wrapper: InstanceWrapper) => {
         const { instance } = wrapper;
         const prototype = Object.getPrototypeOf(instance) || {};
-        const methodNames = this.metadataScanner.getAllMethodNames(prototype);
-        methodNames.forEach((name: string) => {
+        const methods = this.metadataScanner.getAllMethodNames(prototype);
+        methods.forEach((name: string) => {
           const value = this.reflector.get(LISTENER_QUEUE, instance[name]);
           if (value !== undefined) {
             this.consume(value.queue, instance[name]);
           }
         });
       });
-  }
-
-  private async getConnection(): Promise<Connection> {
-    try {
-      if (this.connection === undefined) {
-        const user = this.config.username;
-        const password = this.config.password;
-        const host = this.config.host;
-        this.connection = await connect(`amqp://${user}:${password}@${host}`);
-        this.logger.log('Connection with RabbitMQ successfully established');
-        return this.connection;
-      }
-      return this.connection;
-    } catch (error) {
-      this.logger.error('Connection with RabbitMQ cannot be established successfully');
-      throw error;
-    }
   }
 
   private async consume(queue: string, callback: (properties: MessageProperties, body: string) => void): Promise<void> {
