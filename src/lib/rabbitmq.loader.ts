@@ -1,7 +1,7 @@
 import { Injectable, Inject, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import { InstanceWrapper } from '@nestjs/core/injector/instance-wrapper';
-import { Channel, Connection, MessageProperties, connect } from 'amqplib';
+import { Channel, Connection, MessageProperties, connect, Options } from 'amqplib';
 
 import { CONFIG_OPTIONS, LISTENER_QUEUE } from './rabbitmq.constants';
 import { ConfigOptions, Replies } from './rabbitmq.types';
@@ -30,7 +30,7 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
     Promise.all([this.channel.close(), this.connection.close()]);
   }
 
-  public async getConnection(): Promise<Connection> {
+  private async getConnection(): Promise<Connection> {
     try {
       if (this.connection === undefined) {
         const user = this.config.username;
@@ -47,7 +47,7 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  public async getChannel(): Promise<Channel> {
+  private async getChannel(): Promise<Channel> {
     if (this.channel === undefined) {
       const connection = await this.getConnection();
       this.channel = await connection.createChannel();
@@ -117,5 +117,15 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
         }
       }
     });
+  }
+
+  public async publish(
+    exchange: string,
+    routingKey: string,
+    content: Buffer,
+    options?: Options.Publish,
+  ): Promise<void> {
+    const channel = await this.getChannel();
+    channel.publish(exchange, routingKey, content, options);
   }
 }
