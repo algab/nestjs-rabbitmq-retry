@@ -1,5 +1,8 @@
 # NestJS RabbitMQ Retry
 
+[![NestJS RabbitMQ Retry](https://github.com/algab/nestjs-rabbitmq-retry/actions/workflows/master.yml/badge.svg)](https://github.com/algab/nestjs-rabbitmq-retry/actions)
+[![codecov](https://codecov.io/gh/algab/nestjs-rabbitmq-retry/branch/master/graph/badge.svg?token=O1U411GOIY)](https://codecov.io/gh/algab/nestjs-rabbitmq-retry)
+
 It is a library for the NestJS framework that allows easy communication with RabbitMQ and also provides an already implemented retry mechanism.
 
 ## Install
