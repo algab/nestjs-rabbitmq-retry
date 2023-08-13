@@ -1,12 +1,21 @@
 {
   "name": "nestjs-rabbitmq-retry",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.0.1",
+  "description": "NestJS RabbitMQ Retry",
+  "author": "Álvaro Oliveira",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/algab/nestjs-rabbitmq-retry"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
+  ],
+  "keywords": [
+    "NestJS",
+    "RabbitMQ"
   ],
   "scripts": {
     "build": "rimraf dist && tsc",
