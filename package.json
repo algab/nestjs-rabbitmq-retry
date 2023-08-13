@@ -10,7 +10,8 @@
   ],
   "scripts": {
     "build": "rimraf dist && tsc",
-    "test": "jest --coverage"
+    "test": "jest --coverage --runInBand",
+    "test:watch": "jest --watch"
   },
   "peerDependencies": {
     "@nestjs/common": ">=9.0",
