@@ -11,7 +11,8 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '18.x'
+          registry-url: 'https://registry.npmjs.org'
       - name: Install dependencies
         run: npm install
       - name: Tests units
@@ -21,3 +22,9 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
+      - name: Build package
+        run: npm run build
+      - name: Publish package
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
