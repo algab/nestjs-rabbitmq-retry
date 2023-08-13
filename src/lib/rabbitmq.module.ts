@@ -12,6 +12,7 @@ export class RabbitMQModule {
     config: ConfigOptions = { host: '', username: '', password: '', retry: 3, prefetch: 50, queues: [] },
   ): DynamicModule {
     return {
+      global: true,
       module: RabbitMQModule,
       imports: [DiscoveryModule],
       providers: [
