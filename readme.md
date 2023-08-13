@@ -78,9 +78,9 @@ To send a message you need to use the **RabbitMQService** class. The required at
 
 ```
 @Injectable()
-export  class  MediaService {
-  constructor(private  rabbitmqService: RabbitMQService<string>);
-  async  sendMedia(): Promise<void> {
+export class MediaService {
+  constructor(private rabbitmqService: RabbitMQService<string>);
+  async sendMedia(): Promise<void> {
     await this.rabbitmqService.publish('exchange-save', 'routing-key-save', 'message');
   }
 }
