@@ -7,6 +7,7 @@ export class RabbitMQService<T> {
   constructor(private rabbitmqLoader: RabbitMQLoader) {}
 
   async publish(exchange: string, routingKey: string, message: T): Promise<void> {
-    await this.rabbitmqLoader.publish(exchange, routingKey, Buffer.from(JSON.stringify(message)));
+    const channel = await this.rabbitmqLoader.getChannel();
+    channel.publish(exchange, routingKey, Buffer.from(JSON.stringify(message)));
   }
 }
