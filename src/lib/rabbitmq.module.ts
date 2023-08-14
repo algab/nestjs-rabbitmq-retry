@@ -4,13 +4,21 @@ import { DiscoveryModule } from '@nestjs/core';
 import { CONFIG_OPTIONS } from './rabbitmq.constants';
 import { RabbitMQLoader } from './rabbitmq.loader';
 import { RabbitMQService } from './rabbitmq.service';
-import { ConfigOptions } from './rabbitmq.types';
+import { ConfigChannel, ConfigQueue } from './rabbitmq.types';
 
 @Module({})
 export class RabbitMQModule {
   static forRoot(
-    config: ConfigOptions = { host: '', username: '', password: '', retry: 3, prefetch: 50, queues: [] },
+    host: string,
+    username: string,
+    password: string,
+    retry = 3,
+    channels: ConfigChannel[] = [{ name: 'master', prefetch: 50, primary: true }],
+    queues: ConfigQueue[] = [],
   ): DynamicModule {
+    if (channels.filter((channel) => channel.primary).length === 0) {
+      throw new Error('One of the channels to be created needs to be the primary channel.');
+    }
     return {
       global: true,
       module: RabbitMQModule,
@@ -18,7 +26,7 @@ export class RabbitMQModule {
       providers: [
         {
           provide: CONFIG_OPTIONS,
-          useValue: config,
+          useValue: { host, username, password, retry, channels, queues },
         },
         RabbitMQLoader,
         RabbitMQService,

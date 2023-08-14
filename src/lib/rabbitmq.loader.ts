@@ -11,7 +11,7 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RabbitMQLoader.name);
 
   private connection: Connection;
-  private channel: Channel;
+  private channels: Map<string, Channel> = new Map();
 
   constructor(
     @Inject(CONFIG_OPTIONS) private config: ConfigOptions,
@@ -21,13 +21,14 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
+    await this.createChannel();
     const channel = await this.getChannel();
     await Promise.all(this.createQueues(channel));
     this.registerListeners();
   }
 
   onModuleDestroy() {
-    Promise.all([this.channel.close(), this.connection.close()]);
+    Promise.all([this.closeChannel(), this.connection.close()]);
   }
 
   private async getConnection(): Promise<Connection> {
@@ -44,15 +45,29 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  public async getChannel(): Promise<Channel> {
-    if (this.channel === undefined) {
-      const connection = await this.getConnection();
-      this.channel = await connection.createChannel();
-      await this.channel.prefetch(this.config.prefetch);
-      this.logger.log('Channel created successfully');
-      return this.channel;
+  private async createChannel(): Promise<void> {
+    const connection = await this.getConnection();
+    for (const item of this.config.channels) {
+      const channel = await connection.createChannel();
+      await channel.prefetch(item.prefetch);
+      this.channels.set(item.name, channel);
     }
-    return this.channel;
+    this.logger.log('Channels created successfully');
+  }
+
+  private async closeChannel(): Promise<void> {
+    this.channels.forEach(async (channel) => {
+      await channel.close();
+    });
+  }
+
+  public async getChannel(name?: string): Promise<Channel> {
+    const channel = this.channels.get(name);
+    if (channel === undefined) {
+      const name = this.config.channels.find((channel) => channel.primary).name;
+      return this.channels.get(name);
+    }
+    return channel;
   }
 
   private createQueues(channel: Channel): Replies[] {
@@ -91,7 +106,7 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
         methods.forEach((name: string) => {
           const value = this.reflector.get(LISTENER_QUEUE, instance[name]);
           if (value !== undefined) {
-            this.listener(value.queue, instance[name]);
+            this.listener(value.queue, value.channelName, instance[name]);
           }
         });
       });
@@ -99,9 +114,10 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
 
   private async listener(
     queue: string,
+    channelName: string,
     callback: (properties: MessageProperties, body: string) => void,
   ): Promise<void> {
-    const channel = await this.getChannel();
+    const channel = await this.getChannel(channelName);
     channel.consume(queue, (message) => {
       try {
         callback(message.properties, message.content.toString('utf8'));

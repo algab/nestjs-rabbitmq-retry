@@ -5,8 +5,14 @@ export type ConfigOptions = {
   username: string;
   password: string;
   retry?: number;
-  prefetch?: number;
+  channels?: ConfigChannel[];
   queues?: ConfigQueue[];
+};
+
+export type ConfigChannel = {
+  name: string;
+  prefetch: number;
+  primary: boolean;
 };
 
 export type ConfigQueue = {
