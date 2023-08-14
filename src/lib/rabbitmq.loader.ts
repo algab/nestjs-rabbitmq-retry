@@ -66,11 +66,12 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
         }),
         channel.assertQueue(`${queue.name}.retry`, {
           deadLetterExchange: queue.exchange,
-          deadLetterRoutingKey: queue.routingKey,
+          deadLetterRoutingKey: queue.name,
           messageTtl: queue.ttl,
         }),
         channel.assertQueue(`${queue.name}.dlq`),
         channel.bindQueue(queue.name, queue.exchange, queue.routingKey),
+        channel.bindQueue(queue.name, queue.exchange, queue.name),
         channel.bindQueue(`${queue.name}.retry`, queue.exchange, `${queue.name}.retry`),
         channel.bindQueue(`${queue.name}.dlq`, queue.exchange, `${queue.name}.dlq`),
       ]);

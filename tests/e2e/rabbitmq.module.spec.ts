@@ -82,7 +82,7 @@ describe('Testing e2e RabbitMQModule', () => {
     expect(mockPrefetch).toBeCalledTimes(1);
     expect(mockAssertExchange).toBeCalledTimes(1);
     expect(mockAssertQueue).toBeCalledTimes(3);
-    expect(mockBindQueue).toBeCalledTimes(3);
+    expect(mockBindQueue).toBeCalledTimes(4);
   });
 });
 
