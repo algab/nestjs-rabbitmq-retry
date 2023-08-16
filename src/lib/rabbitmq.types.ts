@@ -1,5 +1,3 @@
-import { Replies } from 'amqplib';
-
 export type ConfigOptions = {
   host: string;
   username: string;
@@ -12,15 +10,33 @@ export type ConfigOptions = {
 export type ConfigChannel = {
   name: string;
   prefetch: number;
+  concurrency: number;
   primary: boolean;
 };
 
 export type ConfigQueue = {
   name: string;
-  exchange: string;
-  exchangeType: 'topic' | 'direct' | 'fanout' | 'headers';
+  exchange: QueueExchange;
   routingKey: string;
   ttl: number;
+  options?: QueueOptions;
 };
 
-export type Replies = Replies.AssertExchange | Replies.AssertQueue | Replies.Empty;
+export type OptionsPublish = {
+  priority?: number | undefined;
+};
+
+type QueueExchange = {
+  name: string;
+  type: 'topic' | 'direct' | 'fanout' | 'headers';
+};
+
+type QueueOptions = {
+  exclusive?: boolean | undefined;
+  durable?: boolean | undefined;
+  autoDelete?: boolean | undefined;
+  expires?: number | undefined;
+  maxLength?: number | undefined;
+  maxPriority?: number | undefined;
+  arguments?: any;
+};

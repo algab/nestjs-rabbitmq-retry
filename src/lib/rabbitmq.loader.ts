@@ -1,17 +1,17 @@
 import { Injectable, Inject, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import { InstanceWrapper } from '@nestjs/core/injector/instance-wrapper';
-import { Channel, Connection, MessageProperties, connect } from 'amqplib';
+import { Channel, Connection, MessageFields, MessageProperties, connect } from 'amqplib';
 
 import { CONFIG_OPTIONS, LISTENER_QUEUE } from './rabbitmq.constants';
-import { ConfigOptions, Replies } from './rabbitmq.types';
+import { ConfigOptions } from './rabbitmq.types';
 
 @Injectable()
 export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RabbitMQLoader.name);
 
   private connection: Connection;
-  private channels: Map<string, Channel> = new Map();
+  private channels: Map<string, Channel[]> = new Map();
 
   constructor(
     @Inject(CONFIG_OPTIONS) private config: ConfigOptions,
@@ -21,14 +21,14 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
-    await this.createChannel();
-    const channel = await this.getChannel();
-    await Promise.all(this.createQueues(channel));
+    await this.createChannels();
+    const channels = await this.getChannel();
+    await this.createQueues(channels[0]);
     this.registerListeners();
   }
 
   onModuleDestroy() {
-    Promise.all([this.closeChannel(), this.connection.close()]);
+    Promise.all([this.closeChannels(), this.connection.close()]);
   }
 
   private async getConnection(): Promise<Connection> {
@@ -45,54 +45,57 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async createChannel(): Promise<void> {
+  private async createChannels(): Promise<void> {
     const connection = await this.getConnection();
     for (const item of this.config.channels) {
-      const channel = await connection.createChannel();
-      await channel.prefetch(item.prefetch);
-      this.channels.set(item.name, channel);
+      const channels = [];
+      for (let index = 0; index < item.concurrency; index++) {
+        const channel = await connection.createChannel();
+        await channel.prefetch(item.prefetch);
+        channels.push(channel);
+      }
+      this.channels.set(item.name, channels);
     }
     this.logger.log('Channels created successfully');
   }
 
-  private async closeChannel(): Promise<void> {
-    this.channels.forEach(async (channel) => {
-      await channel.close();
+  private async closeChannels(): Promise<void> {
+    this.channels.forEach((channels) => {
+      channels.forEach(async (channel) => await channel.close());
     });
   }
 
-  public async getChannel(name?: string): Promise<Channel> {
-    const channel = this.channels.get(name);
-    if (channel === undefined) {
+  public async getChannel(name?: string): Promise<Channel[]> {
+    const channels = this.channels.get(name);
+    if (channels === undefined) {
       const name = this.config.channels.find((channel) => channel.primary).name;
       return this.channels.get(name);
     }
-    return channel;
+    return channels;
   }
 
-  private createQueues(channel: Channel): Replies[] {
-    const queues: Replies[] = [];
+  private async createQueues(channel: Channel): Promise<void> {
     for (const queue of this.config.queues) {
-      queues.concat([
-        channel.assertExchange(queue.exchange, queue.exchangeType),
+      await Promise.all([
+        channel.assertExchange(queue.exchange.name, queue.exchange.type),
         channel.assertQueue(queue.name, {
-          deadLetterExchange: queue.exchange,
+          ...queue.options,
+          deadLetterExchange: queue.exchange.name,
           deadLetterRoutingKey: `${queue.name}.retry`,
         }),
         channel.assertQueue(`${queue.name}.retry`, {
-          deadLetterExchange: queue.exchange,
-          deadLetterRoutingKey: queue.name,
           messageTtl: queue.ttl,
+          deadLetterExchange: queue.exchange.name,
+          deadLetterRoutingKey: queue.name,
         }),
         channel.assertQueue(`${queue.name}.dlq`),
-        channel.bindQueue(queue.name, queue.exchange, queue.routingKey),
-        channel.bindQueue(queue.name, queue.exchange, queue.name),
-        channel.bindQueue(`${queue.name}.retry`, queue.exchange, `${queue.name}.retry`),
-        channel.bindQueue(`${queue.name}.dlq`, queue.exchange, `${queue.name}.dlq`),
+        channel.bindQueue(queue.name, queue.exchange.name, queue.routingKey),
+        channel.bindQueue(queue.name, queue.exchange.name, queue.name),
+        channel.bindQueue(`${queue.name}.retry`, queue.exchange.name, `${queue.name}.retry`),
+        channel.bindQueue(`${queue.name}.dlq`, queue.exchange.name, `${queue.name}.dlq`),
       ]);
     }
     this.logger.log('Queues created successfully');
-    return queues;
   }
 
   private registerListeners(): void {
@@ -115,24 +118,26 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   private async listener(
     queue: string,
     channelName: string,
-    callback: (properties: MessageProperties, body: string) => void,
+    callback: (body: string, fields: MessageFields, properties: MessageProperties) => void,
   ): Promise<void> {
-    const channel = await this.getChannel(channelName);
-    channel.consume(queue, (message) => {
-      try {
-        callback(message.properties, message.content.toString('utf8'));
-        channel.ack(message);
-      } catch (error) {
-        if (
-          message.properties.headers['x-death'] !== undefined &&
-          message.properties.headers['x-death'][0].count + 1 >= this.config.retry
-        ) {
-          channel.sendToQueue(`${queue}.dlq`, Buffer.from(JSON.stringify(message)));
-          channel.reject(message);
-        } else {
-          channel.nack(message, false, false);
+    const channels = await this.getChannel(channelName);
+    for (const channel of channels) {
+      channel.consume(queue, (message) => {
+        try {
+          callback(message.content.toString('utf8'), message.fields, message.properties);
+          channel.ack(message);
+        } catch (error) {
+          if (
+            message.properties.headers['x-death'] !== undefined &&
+            message.properties.headers['x-death'][0].count + 1 >= this.config.retry
+          ) {
+            channel.sendToQueue(`${queue}.dlq`, Buffer.from(JSON.stringify(message)));
+            channel.ack(message, false);
+          } else {
+            channel.nack(message, false, false);
+          }
         }
-      }
-    });
+      });
+    }
   }
 }

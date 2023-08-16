@@ -13,7 +13,7 @@ export class RabbitMQModule {
     username: string,
     password: string,
     retry = 3,
-    channels: ConfigChannel[] = [{ name: 'master', prefetch: 50, primary: true }],
+    channels: ConfigChannel[] = [{ name: 'master', prefetch: 50, concurrency: 2, primary: true }],
     queues: ConfigQueue[] = [],
   ): DynamicModule {
     if (channels.filter((channel) => channel.primary).length === 0) {
