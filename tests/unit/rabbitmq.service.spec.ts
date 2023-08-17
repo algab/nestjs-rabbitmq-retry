@@ -11,7 +11,7 @@ describe('Testing RabbitMQService', () => {
 
   beforeAll(() => {
     rabbitLoader = createMock<RabbitMQLoader>({
-      getChannel: jest.fn().mockResolvedValue({ publish: mockPublish }),
+      getChannel: jest.fn().mockResolvedValue([{ publish: mockPublish }]),
     });
     rabbitService = new RabbitMQService<string>(rabbitLoader);
   });

@@ -13,12 +13,9 @@ export class RabbitMQModule {
     username: string,
     password: string,
     retry = 3,
-    channels: ConfigChannel[] = [{ name: 'master', prefetch: 50, concurrency: 2, primary: true }],
     queues: ConfigQueue[] = [],
+    channels: ConfigChannel[] = [{ name: 'master', prefetch: 50, concurrency: 2, primary: true }],
   ): DynamicModule {
-    if (channels.filter((channel) => channel.primary).length === 0) {
-      throw new Error('One of the channels to be created needs to be the primary channel.');
-    }
     return {
       global: true,
       module: RabbitMQModule,

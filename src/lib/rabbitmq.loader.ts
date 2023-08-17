@@ -21,10 +21,14 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
-    await this.createChannels();
-    const channels = await this.getChannel();
-    await this.createQueues(channels[0]);
-    this.registerListeners();
+    if (this.config.channels.filter((channel) => channel.primary).length === 0) {
+      throw new Error('One of the channels to be created needs to be the primary channel.');
+    } else {
+      await this.createChannels();
+      const channels = await this.getChannel();
+      await this.createQueues(channels[0]);
+      this.registerListeners();
+    }
   }
 
   onModuleDestroy() {

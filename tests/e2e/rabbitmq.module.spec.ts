@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import * as amqplib from 'amqplib';
 
 import { RabbitMQModule, Listener } from '../../src';
+import { rejects } from 'assert';
 
 const mockConnect = jest.fn();
 const mockAssertExchange = jest.fn();
@@ -12,7 +13,6 @@ const mockPrefetch = jest.fn();
 const mockBindQueue = jest.fn();
 const mockAck = jest.fn();
 const mockSendToQueue = jest.fn();
-const mockReject = jest.fn();
 
 jest.mock('amqplib', () => ({
   ...jest.requireActual('amqplib'),
@@ -27,7 +27,7 @@ class ListenerSuccess {
 
 @Injectable()
 class ListenerError {
-  @Listener('queue')
+  @Listener('queue', 'master')
   test() {
     throw new Error('error');
   }
@@ -54,21 +54,17 @@ describe('Testing e2e RabbitMQModule', () => {
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [
-        RabbitMQModule.forRoot({
-          host: '0.0.0.0',
-          username: 'test',
-          password: 'test',
-          retry: 3,
-          queues: [
-            {
-              name: 'test',
-              exchange: 'exchange',
-              exchangeType: 'topic',
-              routingKey: 'routing',
-              ttl: 1000,
+        RabbitMQModule.forRoot('0.0.0.0', 'test', 'test', 5, [
+          {
+            name: 'test',
+            routingKey: 'routing',
+            exchange: {
+              name: 'exchange',
+              type: 'topic',
             },
-          ],
-        }),
+            ttl: 1000,
+          },
+        ]),
       ],
       providers: [ListenerSuccess, ListenerError],
     }).compile();
@@ -79,7 +75,7 @@ describe('Testing e2e RabbitMQModule', () => {
   afterEach(() => jest.clearAllMocks());
 
   it('when initializing the module it must trigger all the actions of creating and linking queues', () => {
-    expect(mockPrefetch).toBeCalledTimes(1);
+    expect(mockPrefetch).toBeCalledTimes(2);
     expect(mockAssertExchange).toBeCalledTimes(1);
     expect(mockAssertQueue).toBeCalledTimes(3);
     expect(mockBindQueue).toBeCalledTimes(4);
@@ -98,7 +94,6 @@ describe('Testing e2e RabbitMQModule dlq', () => {
       bindQueue: jest.fn(),
       ack: mockAck,
       sendToQueue: mockSendToQueue,
-      reject: mockReject,
       consume: (_, onMessage: (msg: amqplib.Message) => void) =>
         onMessage(
           createMock<amqplib.Message>({
@@ -126,21 +121,24 @@ describe('Testing e2e RabbitMQModule dlq', () => {
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [
-        RabbitMQModule.forRoot({
-          host: '0.0.0.0',
-          username: 'test',
-          password: 'test',
-          retry: 3,
-          queues: [
+        RabbitMQModule.forRoot(
+          '0.0.0.0',
+          'test',
+          'test',
+          3,
+          [
             {
               name: 'test',
-              exchange: 'exchange',
-              exchangeType: 'topic',
               routingKey: 'routing',
+              exchange: {
+                name: 'exchange',
+                type: 'topic',
+              },
               ttl: 1000,
             },
           ],
-        }),
+          [{ name: 'master', prefetch: 10, concurrency: 1, primary: true }],
+        ),
       ],
       providers: [ListenerError],
     }).compile();
@@ -152,7 +150,39 @@ describe('Testing e2e RabbitMQModule dlq', () => {
 
   it('when a message has already been sent more than three times it must go to the dlq', () => {
     expect(mockSendToQueue).toBeCalledTimes(1);
-    expect(mockReject).toBeCalledTimes(1);
-    expect(mockAck).not.toBeCalled();
+    expect(mockAck).toBeCalledTimes(1);
+  });
+});
+
+describe('Testing e2e RabbitMQModule init', () => {
+  mockConnect.mockRejectedValueOnce(new Error('test'));
+
+  afterEach(() => jest.clearAllMocks());
+
+  it('test', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        RabbitMQModule.forRoot(
+          '0.0.0.0',
+          'test',
+          'test',
+          3,
+          [],
+          [{ name: 'master', prefetch: 10, concurrency: 1, primary: false }],
+        ),
+      ],
+      providers: [ListenerError],
+    }).compile();
+    await expect(() => moduleRef.init()).rejects.toThrowError(
+      'One of the channels to be created needs to be the primary channel.',
+    );
+  });
+
+  it('test 2', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [RabbitMQModule.forRoot('0.0.0.0', 'test', 'test')],
+      providers: [ListenerError],
+    }).compile();
+    await expect(() => moduleRef.init()).rejects.toThrowError();
   });
 });
