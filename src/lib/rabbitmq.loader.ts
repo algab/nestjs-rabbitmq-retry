@@ -37,10 +37,11 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
 
   private async getConnection(): Promise<Connection> {
     try {
+      const amqp = this.config.isAMQPS ? 'amqps' : 'amqp';
       const user = this.config.username;
       const password = this.config.password;
       const host = this.config.host;
-      this.connection = await connect(`amqp://${user}:${password}@${host}`);
+      this.connection = await connect(`${amqp}://${user}:${password}@${host}`);
       this.logger.log('Connection with RabbitMQ successfully established');
       return this.connection;
     } catch (error) {

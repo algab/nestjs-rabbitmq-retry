@@ -3,8 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as amqplib from 'amqplib';
 
-import { RabbitMQModule, Listener } from '../../src';
-import { rejects } from 'assert';
+import { RabbitMQModule, Listener } from 'src';
 
 const mockConnect = jest.fn();
 const mockAssertExchange = jest.fn();
@@ -54,7 +53,7 @@ describe('Testing e2e RabbitMQModule', () => {
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [
-        RabbitMQModule.forRoot('0.0.0.0', 'test', 'test', 5, [
+        RabbitMQModule.forRoot('0.0.0.0', 'test', 'test', false, 5, [
           {
             name: 'test',
             routingKey: 'routing',
@@ -125,6 +124,7 @@ describe('Testing e2e RabbitMQModule dlq', () => {
           '0.0.0.0',
           'test',
           'test',
+          true,
           3,
           [
             {
@@ -166,6 +166,7 @@ describe('Testing e2e RabbitMQModule init', () => {
           '0.0.0.0',
           'test',
           'test',
+          true,
           3,
           [],
           [{ name: 'master', prefetch: 10, concurrency: 1, primary: false }],

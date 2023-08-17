@@ -2,16 +2,10 @@ export type ConfigOptions = {
   host: string;
   username: string;
   password: string;
+  isAMQPS: boolean;
   retry?: number;
-  channels?: ConfigChannel[];
   queues?: ConfigQueue[];
-};
-
-export type ConfigChannel = {
-  name: string;
-  prefetch: number;
-  concurrency: number;
-  primary: boolean;
+  channels?: ConfigChannel[];
 };
 
 export type ConfigQueue = {
@@ -20,6 +14,13 @@ export type ConfigQueue = {
   routingKey: string;
   ttl: number;
   options?: QueueOptions;
+};
+
+export type ConfigChannel = {
+  name: string;
+  prefetch: number;
+  concurrency: number;
+  primary: boolean;
 };
 
 export type OptionsPublish = {
@@ -38,5 +39,6 @@ type QueueOptions = {
   expires?: number | undefined;
   maxLength?: number | undefined;
   maxPriority?: number | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   arguments?: any;
 };

@@ -12,6 +12,7 @@ export class RabbitMQModule {
     host: string,
     username: string,
     password: string,
+    isAMQPS = false,
     retry = 3,
     queues: ConfigQueue[] = [],
     channels: ConfigChannel[] = [{ name: 'master', prefetch: 50, concurrency: 2, primary: true }],
@@ -23,7 +24,7 @@ export class RabbitMQModule {
       providers: [
         {
           provide: CONFIG_OPTIONS,
-          useValue: { host, username, password, retry, channels, queues },
+          useValue: { host, username, password, isAMQPS, retry, channels, queues },
         },
         RabbitMQLoader,
         RabbitMQService,
