@@ -27,6 +27,7 @@ After installing **nestjs-rabbitmq-retry** you need to import it globally prefer
       '0.0.0.0:5672',
       'guest',
       'guest',
+      false,
       3,
       [
         { queue: 'save', exchange: { name: 'exchange-save', type: 'topic' }, routingKey: 'routing-key-save', ttl: 10000 },
@@ -48,6 +49,8 @@ The configuration attributes are:
 - username: The username to access RabbitMQ. (Mandatory)
 
 - password: The password to access RabbitMQ. (Mandatory)
+
+- isAMQPS: The connection used will be amqps. (The default value is false)
 
 - retry: The number of times the message will be processed. (The default value is 3)
 
