@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as amqplib from 'amqplib';
 
-import { RabbitMQModule, Listener } from 'src';
+import { RabbitMQModule, Listener } from '../../src';
 
 const mockConnect = jest.fn();
 const mockAssertExchange = jest.fn();
