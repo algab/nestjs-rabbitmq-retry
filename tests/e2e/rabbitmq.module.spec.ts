@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as amqplib from 'amqplib';
 
-import { RabbitMQModule, Listener } from 'src';
+import { RabbitMQModule, Listener } from '../../src';
 
 const mockConnect = jest.fn();
 const mockAssertExchange = jest.fn();
@@ -154,12 +154,12 @@ describe('Testing e2e RabbitMQModule dlq', () => {
   });
 });
 
-describe('Testing e2e RabbitMQModule init', () => {
+describe('Testing e2e RabbitMQModule error', () => {
   mockConnect.mockRejectedValueOnce(new Error('test'));
 
   afterEach(() => jest.clearAllMocks());
 
-  it('test', async () => {
+  it('when there is no primary channel then it should return error', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         RabbitMQModule.forRoot(
@@ -179,7 +179,7 @@ describe('Testing e2e RabbitMQModule init', () => {
     );
   });
 
-  it('test 2', async () => {
+  it('when there is a connection error it should show an error message', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [RabbitMQModule.forRoot('0.0.0.0', 'test', 'test')],
       providers: [ListenerError],
