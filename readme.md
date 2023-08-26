@@ -4,11 +4,11 @@
 [![codecov](https://codecov.io/gh/algab/nestjs-rabbitmq-retry/branch/master/graph/badge.svg?token=O1U411GOIY)](https://codecov.io/gh/algab/nestjs-rabbitmq-retry)
 [![npm package](https://img.shields.io/npm/v/nestjs-rabbitmq-retry?style=flat)](https://www.npmjs.com/package/nestjs-rabbitmq-retry)
 
-It is a library for the NestJS framework that allows easy communication with RabbitMQ and also provides an already implemented retry mechanism.
+It is a library for the NestJS framework that allows easy communication with RabbitMQ and also provides an already implemented repeating mechanism.
 
-For each queue created using this library, two additional queues will be created, one for retry and the other for DLQ.
+For each queue created using this library, two additional queues will be created, one for retentatives and one for DLQ.
 
-In addition to this automatic retry management approach, you can manage and customize multiple channels in one connection.
+In addition to this automatic retentative management approach, you can manage and customize multiple channels in one connection.
 
 ## Install
 
@@ -79,7 +79,7 @@ The channel parameter attributes are as follows:
 
 ## Listener
 
-To configure a queue listener is very simple, just put the **Listener** annotation in the method you want to process the message. In this annotation you put the name of the queue that you want to receive the messages and the name of the channel if you have specific configurations to consume messages from a specific queue.
+To set up a queue listener is very simple, just put the annotation **Listener** in the method you want to process the message. In this annotation, you put the name of the queue you want to receive the messages and also optionally the channel name if you have specific settings to consume messages in a certain way.
 
 #### Queue name only
 
@@ -113,9 +113,9 @@ export class MessageListener {
 
 ## Producer
 
-To send a message, you need to use the **RabbitMQService** class. Required attributes are the **exchange name**, **the RoutingKey**, and the **message** you want to send. You can send a message of any type. There is also the options attribute where you will be able to send the message which is its priority.
+To send a message, you need to use the **RabbitMQService** class. The required attributes are the name of the **exchange**, the name of the **routing key**, and the **message** you want to send. You can send a message of any kind. There is also the **options** attribute that contains the **priority** field where the priority of this message is indicated for RabbitMQ.
 
-**Warning 1:** To use this class you need to have imported the RabbitMQModule.
+**Warning 1:** To use the RabbitMQService class you need to have imported RabbitMQModule into AppModule.
 
 **Warning 2:** To consume messages with priority, this respective configuration must be indicated when creating the queue.
 

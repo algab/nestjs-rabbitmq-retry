@@ -1,6 +1,6 @@
 {
   "name": "nestjs-rabbitmq-retry",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "NestJS RabbitMQ Retry",
   "author": "Álvaro Oliveira",
   "main": "dist/index.js",
