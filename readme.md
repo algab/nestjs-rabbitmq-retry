@@ -44,11 +44,11 @@ export class AppModule {}
 
 The configuration attributes are:
 
-- host: The host where RabbitMQ is running. (Mandatory)
+- host: The host where RabbitMQ is running. (Required)
 
-- username: The username to access RabbitMQ. (Mandatory)
+- username: The username to access RabbitMQ. (Required)
 
-- password: The password to access RabbitMQ. (Mandatory)
+- password: The password to access RabbitMQ. (Required)
 
 - isAMQPS: The connection used will be amqps. (The default value is false)
 
@@ -60,10 +60,10 @@ The queues parameter attributes are as follows:
 
 | Name         | Explanation                                                                                                     |
 | ------------ | --------------------------------------------------------------------------------------------------------------- |
-| name         | The name of the queue to be created. (Mandatory)                                                                |
-| exchange     | The exchange is an object that contains two attributes name and type. The exchange type has the following valid values: topic, direct, fanout and headers.(Mandatory)                              |
-| routingKey   | The name of the routing key to bind. (Mandatory)                                                                |
-| ttl          | The time in milliseconds that the message will wait to be reprocessed. (Mandatory)                              |
+| name         | The name of the queue to be created. (Required)                                                                |
+| exchange     | The exchange is an object that contains two attributes name and type. The exchange type has the following valid values: topic, direct, fanout and headers.(Required)                              |
+| routingKey   | The name of the routing key to bind. (Required)                                                                |
+| ttl          | The time in milliseconds that the message will wait to be reprocessed. (Required)                              |
 | options      | Options is an object that contains the following attributes: exclusive, durable, autoDelete, expires, maxLength, maxPriority and arguments. None of these attributes are required. The arguments attribute is an object that can take additional arguments, usually parameters for some type of broker-specific extension.                                          |
 
 - channels: It is an array that indicates how many channels should be created and what their settings will be like. (The default value is { name: 'master', prefetch: 50, concurrency: 2, primary: true })
@@ -72,10 +72,10 @@ The channel parameter attributes are as follows:
 
 | Name         | Explanation                                                                                                              |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| name         | The name of the channel to be created. (Mandatory)                                                                       |
-| prefetch     | Number of messages to be searched. (Mandatory)                                                                           |
-| concurrency  | Number of channels that will be created with the same settings to increase the number of consumed messages. (Mandatory)  |
-| primary      | It is a boolean that indicates whether this channel will be used to perform other operations in addition to being the default channel for consuming messages, if no other is indicated.  (Mandatory)                                                                |
+| name         | The name of the channel to be created. (Required)                                                                       |
+| prefetch     | Number of messages to be searched. (Required)                                                                           |
+| concurrency  | Number of channels that will be created with the same settings to increase the number of consumed messages. (Required)  |
+| primary      | It is a boolean that indicates whether this channel will be used to perform other operations in addition to being the default channel for consuming messages, if no other is indicated.  (Required)                                                                |
 
 ## Listener
 
@@ -85,6 +85,7 @@ To set up a queue listener is very simple, just put the annotation **Listener** 
 
 ```
 import { MessageFields, MessageProperties } from 'amqplib';
+import { Listener } from 'nestjs-rabbitmq-retry';
 
 @Injectable()
 export class MessageListener {
@@ -100,6 +101,7 @@ export class MessageListener {
 
 ```
 import { MessageFields, MessageProperties } from 'amqplib';
+import { Listener } from 'nestjs-rabbitmq-retry';
 
 @Injectable()
 export class MessageListener {
@@ -122,6 +124,8 @@ To send a message, you need to use the **RabbitMQService** class. The required a
 #### No options field
 
 ```
+import { RabbitMQService } from 'nestjs-rabbitmq-retry';
+
 @Injectable()
 export class MessageService {
   constructor(private rabbitmqService: RabbitMQService<string>);
@@ -134,6 +138,8 @@ export class MessageService {
 #### With options field
 
 ```
+import { RabbitMQService } from 'nestjs-rabbitmq-retry';
+
 @Injectable()
 export class MessageService {
   constructor(private rabbitmqService: RabbitMQService<string>);
