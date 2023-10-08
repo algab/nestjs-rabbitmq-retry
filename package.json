@@ -1,6 +1,6 @@
 {
   "name": "nestjs-rabbitmq-retry",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "NestJS RabbitMQ Retry",
   "author": "Álvaro Oliveira",
   "main": "dist/index.js",
@@ -28,6 +28,9 @@
     "@nestjs/core": ">=9.0",
     "amqplib": ">=0.10",
     "rxjs": ">=7.0"
+  },
+  "dependencies": {
+    "@golevelup/nestjs-discovery": "^4.0.0"
   },
   "devDependencies": {
     "@golevelup/ts-jest": "^0.4.0",
