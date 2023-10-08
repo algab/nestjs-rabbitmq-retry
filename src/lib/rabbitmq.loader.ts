@@ -1,6 +1,5 @@
 import { Injectable, Inject, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
-import { InstanceWrapper } from '@nestjs/core/injector/instance-wrapper';
+import { DiscoveryService } from '@golevelup/nestjs-discovery';
 import { Channel, Connection, MessageFields, MessageProperties, connect } from 'amqplib';
 
 import { CONFIG_OPTIONS, LISTENER_QUEUE } from './rabbitmq.constants';
@@ -16,8 +15,6 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(CONFIG_OPTIONS) private config: ConfigOptions,
     private discoveryService: DiscoveryService,
-    private metadataScanner: MetadataScanner,
-    private reflector: Reflector,
   ) {}
 
   async onModuleInit() {
@@ -27,7 +24,7 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
       await this.createChannels();
       const channels = await this.getChannel();
       await this.createQueues(channels[0]);
-      this.registerListeners();
+      await this.registerListeners();
     }
   }
 
@@ -103,21 +100,17 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Queues created successfully');
   }
 
-  private registerListeners(): void {
-    this.discoveryService
-      .getProviders()
-      .filter((wrapper) => wrapper.instance && !wrapper.isAlias)
-      .forEach((wrapper: InstanceWrapper) => {
-        const { instance } = wrapper;
-        const prototype = Object.getPrototypeOf(instance) || {};
-        const methods = this.metadataScanner.getAllMethodNames(prototype);
-        methods.forEach((name: string) => {
-          const value = this.reflector.get(LISTENER_QUEUE, instance[name]);
-          if (value !== undefined) {
-            this.listener(value.queue, value.channelName, instance[name]);
-          }
-        });
-      });
+  private async registerListeners(): Promise<void> {
+    const methods = await this.discoveryService.providerMethodsWithMetaAtKey<{ queue: string; channelName: string }>(
+      LISTENER_QUEUE,
+    );
+    methods.forEach((method) => {
+      const meta = method.meta;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const handler = (...args: any) =>
+        method.discoveredMethod.handler.apply(method.discoveredMethod.parentClass.instance, args);
+      this.listener(meta.queue, meta.channelName, handler);
+    });
   }
 
   private async listener(

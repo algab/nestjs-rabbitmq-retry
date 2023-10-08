@@ -1,5 +1,5 @@
 import { DynamicModule, Module } from '@nestjs/common';
-import { DiscoveryModule } from '@nestjs/core';
+import { DiscoveryModule } from '@golevelup/nestjs-discovery';
 
 import { CONFIG_OPTIONS } from './rabbitmq.constants';
 import { RabbitMQLoader } from './rabbitmq.loader';
