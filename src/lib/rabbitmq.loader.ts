@@ -116,13 +116,13 @@ export class RabbitMQLoader implements OnModuleInit, OnModuleDestroy {
   private async listener(
     queue: string,
     channelName: string,
-    callback: (body: string, fields: MessageFields, properties: MessageProperties) => void,
+    callback: (body: string, fields: MessageFields, properties: MessageProperties) => Promise<void> | void,
   ): Promise<void> {
     const channels = await this.getChannel(channelName);
     for (const channel of channels) {
-      channel.consume(queue, (message) => {
+      channel.consume(queue, async (message) => {
         try {
-          callback(message.content.toString('utf8'), message.fields, message.properties);
+          await callback(message.content.toString('utf8'), message.fields, message.properties);
           channel.ack(message);
         } catch (error) {
           if (
